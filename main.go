@@ -28,7 +28,7 @@ type GameStore struct {
 	conqueror *Player
 }
 
-var battleRegExp = regexp.MustCompile(`Битва с\W+(.*) окончена.`)
+var battleRegExp = regexp.MustCompile(`Битва с (\[[^[:ascii:]]*\])?(.*) окончена`)
 var statRegExp = regexp.MustCompile(`Завоеватель:\W+(\w.*)`)
 
 var gameStore = &GameStore{immunes: make([]*Immune, 0)}
@@ -53,7 +53,7 @@ func immunesHandler(m *tbot.Message) {
 	lines := make([]string, 0)
 	immunes := gameStore.GetImmunes()
 	for _, immune := range immunes {
-		line := fmt.Sprintf("%s: %s", immune.player.Name, immune.end.Sub(time.Now()))
+		line := fmt.Sprintf("%s: %s", immune.player.Name, roundDuration(immune.end.Sub(time.Now())))
 		lines = append(lines, line)
 	}
 	reply := strings.Join(lines, "\n")
@@ -78,10 +78,28 @@ func parseForwardHandler(m *tbot.Message) {
 	log.Println(m)
 	log.Println(m.Data)
 	if strings.HasPrefix(m.Data, "‼️Битва с альянсом") {
-		names := parseAllianceBattle(m.Data)
-		if names == nil {
+		players := parseAllianceBattle(m.Data)
+		if players == nil {
 			return
 		}
+		conqueror, players := extractConqueror(players)
+		if conqueror != nil {
+			immune := gameStore.AddImmune(conqueror, forwardTime)
+			go func() {
+				<-time.After(immune, forwardTime)
+				gameStore.RemoveImmune(conqueror)
+				bot.Send(m.ChatID, fmt.Sprintf("Имун завоевателя закончился: %s", player.Name))
+			}()
+		}
+		go func() {
+			<-time.After(immune.end.Sub(time.Now()))
+			names := make([]string, 0)
+			for _, player := range players {
+				names = append(names, player.Name)
+				gameStore.RemoveImmune(player)
+			}
+			bot.Send(m.ChatID, fmt.Sprintf("Имун закончился: %s", strings.Join(players, ", ")))
+		}()
 		m.Replyf("%s: %s", strings.Join(names, ", "), forwardTime.String())
 	} else if strings.HasPrefix(m.Data, "‼️Битва с") {
 		player := parseBattle(m.Data)
@@ -95,6 +113,16 @@ func parseForwardHandler(m *tbot.Message) {
 			m.Replyf("%s: %s", player.Name, forwardTime.String())
 		}
 	}
+}
+
+func extractConqueror(players []*Player) (*Player, []*Player) {
+	conqueror := gameStore.GetConqueror()
+	for i, player := range players {
+		if conqueror != nil && player.Name == conqueror.Name {
+			return conqueror, append(players[:i], players[i+1:]...)
+		}
+	}
+	return nil, players
 }
 
 func parseAllianceBattle(message string) []string {
@@ -207,4 +235,8 @@ func (gs *GameStore) GetImmunes() []*Immune {
 	gs.Lock()
 	defer gs.Unlock()
 	return gs.immunes
+}
+
+func roundDuration(d time.Duration) time.Duration {
+	return d - (d % time.Second)
 }
