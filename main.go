@@ -28,7 +28,7 @@ type GameStore struct {
 	conqueror *Player
 }
 
-var battleRegExp = regexp.MustCompile(`Битва с \[?(\W)?\]?(.*) окончена.`)
+var battleRegExp = regexp.MustCompile(`Битва с\W+(.*) окончена.`)
 var statRegExp = regexp.MustCompile(`Завоеватель:\W+(\w.*)`)
 
 var gameStore = &GameStore{immunes: make([]*Immune, 0)}
@@ -44,8 +44,24 @@ func main() {
 	if err != nil {
 		log.Fatal(err)
 	}
+	bot.HandleFunc("/immunes", immunesHandler)
 	bot.HandleDefault(parseForwardHandler)
 	bot.ListenAndServe()
+}
+
+func immunesHandler(m *tbot.Message) {
+	lines := make([]string, 0)
+	immunes := gameStore.GetImmunes()
+	for _, immune := range immunes {
+		line := fmt.Sprintf("%s: %s", immune.player.Name, immune.end.Sub(time.Now()))
+		lines = append(lines, line)
+	}
+	reply := strings.Join(lines, "\n")
+	if reply == "" {
+		m.Reply("Известных иммунов нет")
+		return
+	}
+	m.Reply(strings.Join(lines, "\n"))
 }
 
 func parseForwardHandler(m *tbot.Message) {
@@ -73,6 +89,7 @@ func parseForwardHandler(m *tbot.Message) {
 			immune := gameStore.AddImmune(player, forwardTime)
 			go func() {
 				<-time.After(immune.end.Sub(time.Now()))
+				gameStore.RemoveImmune(player)
 				bot.Send(m.ChatID, fmt.Sprintf("Имун закончился: %s", player.Name))
 			}()
 			m.Replyf("%s: %s", player.Name, forwardTime.String())
@@ -155,6 +172,16 @@ func (gs *GameStore) AddImmune(player *Player, start time.Time) *Immune {
 	return immune
 }
 
+func (gs *GameStore) RemoveImmune(player *Player) {
+	gs.Lock()
+	defer gs.Unlock()
+	for i, immune := range gs.immunes {
+		if immune.player.Name == player.Name {
+			gs.immunes = append(gs.immunes[:i], gs.immunes[i+1:]...)
+		}
+	}
+}
+
 func (gs *GameStore) SetConqueror(player *Player) {
 	gs.Lock()
 	gs.conqueror = player
@@ -174,4 +201,10 @@ func parseConqueror(message string) *Player {
 		return nil
 	}
 	return &Player{Name: matches[1]}
+}
+
+func (gs *GameStore) GetImmunes() []*Immune {
+	gs.Lock()
+	defer gs.Unlock()
+	return gs.immunes
 }
