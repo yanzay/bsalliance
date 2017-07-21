@@ -36,7 +36,10 @@ func NewGameStore(file string) *GameStore {
 	db.View(func(tx *bolt.Tx) error {
 		b := tx.Bucket(bucketName)
 		immunesBytes := b.Get(immunesKey)
-		json.Unmarshal(immunesBytes, immunes)
+		err := json.Unmarshal(immunesBytes, immunes)
+		if err != nil {
+			log.Errorf("can't unmarshal immunes %s: %q", string(immunesBytes), err)
+		}
 		conquerorBytes = b.Get(conquerorKey)
 		return nil
 	})
