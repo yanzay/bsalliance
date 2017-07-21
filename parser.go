@@ -2,15 +2,21 @@ package main
 
 import (
 	"log"
+	"regexp"
 	"strings"
+)
+
+var (
+	battleRegExp = regexp.MustCompile(`Битва с (\[[^[:ascii:]]*\])?(.*) окончена`)
+	statRegExp   = regexp.MustCompile(`Завоеватель:\s+(\[[^[:ascii:]]*\])?(.*)`)
 )
 
 func parseConqueror(message string) *Player {
 	matches := statRegExp.FindStringSubmatch(message)
-	if len(matches) < 2 {
+	if len(matches) < 3 {
 		return nil
 	}
-	return &Player{Name: matches[1]}
+	return &Player{Name: matches[2]}
 }
 
 func parseBattle(message string) *Player {

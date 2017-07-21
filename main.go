@@ -4,7 +4,6 @@ import (
 	"flag"
 	"fmt"
 	"os"
-	"regexp"
 	"strings"
 	"time"
 
@@ -26,9 +25,6 @@ type Immune struct {
 }
 
 var dbFile = flag.String("data", "bsalliance.db", "Database file")
-
-var battleRegExp = regexp.MustCompile(`Битва с (\[[^[:ascii:]]*\])?(.*) окончена`)
-var statRegExp = regexp.MustCompile(`Завоеватель:\W+(\w.*)`)
 
 var gameStore *GameStore
 
