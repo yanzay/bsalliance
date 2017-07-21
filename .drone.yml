@@ -1,0 +1,39 @@
+workspace:
+  base: /go
+  path: src/github.com/yanzay/bsalliance
+
+pipeline:
+  build:
+    image: golang
+    commands:
+      - CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build
+      - go test
+
+  publish:
+    image: plugins/docker
+    repo: yanzay/bsalliance
+    username: yanzay
+    tags: [ latest ]
+    secrets: [ DOCKER_PASSWORD ]
+
+  deploy:
+    image: appleboy/drone-ssh
+    host: drone.yanzay.com
+    username: root
+    port: 22
+    script:
+      - cd infra
+      - docker-compose pull bsalliance
+      - docker-compose up -d
+    when:
+      status: success
+    secrets: [ SSH_KEY ]
+
+  telegram:
+    image: appleboy/drone-telegram
+    to: 93068777
+    when:
+      status: [ success, failure ]
+    secrets:
+      - source: NOTIFICATION_TOKEN
+        target: PLUGIN_TOKEN
