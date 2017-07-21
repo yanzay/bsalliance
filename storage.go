@@ -2,6 +2,7 @@ package main
 
 import (
 	"encoding/json"
+	"fmt"
 	"sync"
 	"time"
 
@@ -73,27 +74,58 @@ func (gs *GameStore) GetImmunes() map[string]*Immune {
 	return gs.immunes
 }
 
-func (gs *GameStore) AddImmune(player *Player, start time.Time) *Immune {
+func (gs *GameStore) GetImmune(name string) *Immune {
 	gs.Lock()
 	defer gs.Unlock()
-	var end time.Time
-	if gs.conqueror != nil && gs.conqueror.Name == player.Name {
-		end = start.Add(immuneConquerorDuration)
-	} else {
-		end = start.Add(immuneStandardDuration)
+	return gs.immunes[name]
+}
+
+func (gs *GameStore) AddImmune(player *Player, start time.Time) (*Immune, bool) {
+	gs.Lock()
+	defer gs.Unlock()
+	immune := &Immune{
+		Player: player,
+		End:    start.Add(gs.immuneDuration(player)),
 	}
-	immune := &Immune{Player: player, End: end}
+	if gs.existingImmune(immune) {
+		return immune, false
+	}
 	gs.immunes[player.Name] = immune
 
 	immunesBytes, err := json.Marshal(gs.immunes)
 	if err != nil {
 		log.Errorf("failed to marshal immunes: %q", err)
-		return immune
+		return immune, false
 	}
 	log.Infof("Marshalled immunes: %s", string(immunesBytes))
 	gs.db.Update(func(tx *bolt.Tx) error {
 		b := tx.Bucket(bucketName)
 		return b.Put(immunesKey, immunesBytes)
 	})
-	return immune
+	return immune, true
+}
+
+func (gs *GameStore) existingImmune(immune *Immune) bool {
+	existing := gs.immunes[immune.Player.Name]
+	if existing == nil {
+		return false
+	}
+	return existing.End.Add(gs.immuneDuration(immune.Player)).After(immune.End)
+}
+
+func (gs *GameStore) immuneDuration(player *Player) time.Duration {
+	if gs.conqueror != nil && gs.conqueror.Name == player.Name {
+		return immuneConquerorDuration
+	}
+	return immuneStandardDuration
+}
+
+func (gs *GameStore) runWaiters() {
+	gs.Lock()
+	defer gs.Unlock()
+	for _, immune := range gs.immunes {
+		if immune.End.After(time.Now()) {
+			go waiter(immune, fmt.Sprintf("Имун закончился: %s", immune.Player.Name))
+		}
+	}
 }

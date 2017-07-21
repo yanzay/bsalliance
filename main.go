@@ -36,6 +36,7 @@ var bot *tbot.Server
 func main() {
 	flag.Parse()
 	gameStore = NewGameStore(*dbFile)
+	gameStore.runWaiters()
 	var err error
 	bot, err = tbot.NewServer(os.Getenv("TELEGRAM_TOKEN"))
 	if err != nil {
@@ -86,32 +87,33 @@ func parseForwardHandler(m *tbot.Message) {
 		}
 		conqueror, players := extractConqueror(players)
 		if conqueror != nil {
-			immune := gameStore.AddImmune(conqueror, forwardTime)
-			go func() {
-				<-time.After(time.Until(immune.End))
-				bot.Send(chatId, fmt.Sprintf("Имун завоевателя закончился: %s", conqueror.Name))
-			}()
+			immune, updated := gameStore.AddImmune(conqueror, forwardTime)
+			if updated {
+				go waiter(immune, fmt.Sprintf("Имун завоевателя закончился: %s", conqueror.Name))
+			}
 		}
-		var immune *Immune
 		for _, player := range players {
-			immune = gameStore.AddImmune(player, forwardTime)
+			immune, updated := gameStore.AddImmune(player, forwardTime)
+			if updated {
+				go waiter(immune, fmt.Sprintf("Имун закончился: %s", player.Name))
+			}
 		}
-		go func() {
-			<-time.After(time.Until(immune.End))
-			bot.Send(chatId, fmt.Sprintf("Имун закончился: %s", printPlayers(players)))
-		}()
 		m.Replyf("%s: %s", printPlayers(players), forwardTime.String())
 	} else if strings.HasPrefix(m.Data, "‼️Битва с") {
 		player := parseBattle(m.Data)
 		if player != nil {
-			immune := gameStore.AddImmune(player, forwardTime)
-			go func() {
-				<-time.After(time.Until(immune.End))
-				bot.Send(chatId, fmt.Sprintf("Имун закончился: %s", player.Name))
-			}()
+			immune, updated := gameStore.AddImmune(player, forwardTime)
+			if updated {
+				go waiter(immune, fmt.Sprintf("Имун закончился: %s", player.Name))
+			}
 			m.Replyf("%s: %s", player.Name, forwardTime.String())
 		}
 	}
+}
+
+func waiter(immune *Immune, text string) {
+	<-time.After(time.Until(immune.End))
+	bot.Send(chatId, text)
 }
 
 func printPlayers(players []*Player) string {
