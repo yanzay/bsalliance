@@ -30,7 +30,7 @@ var dbFile = flag.String("data", "bsalliance.db", "Database file")
 var battleRegExp = regexp.MustCompile(`Битва с (\[[^[:ascii:]]*\])?(.*) окончена`)
 var statRegExp = regexp.MustCompile(`Завоеватель:\W+(\w.*)`)
 
-var gameStore = &GameStore{immunes: make(map[string]*Immune)}
+var gameStore *GameStore
 
 var immuneStandardDuration = 1 * time.Hour
 var immuneConquerorDuration = 30 * time.Minute
@@ -38,6 +38,8 @@ var immuneConquerorDuration = 30 * time.Minute
 var bot *tbot.Server
 
 func main() {
+	flag.Parse()
+	gameStore = NewGameStore(*dbFile)
 	var err error
 	bot, err = tbot.NewServer(os.Getenv("TELEGRAM_TOKEN"))
 	if err != nil {
