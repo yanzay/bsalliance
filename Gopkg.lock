@@ -1,4 +1,10 @@
-memo = "64655f24376b81dc084349470c81070a51a15fe5f22af4273009ee5f7a7c4693"
+memo = "2c9fa258c5d28878855cb12848a03d24d8827ac3924c140c114c9e5f1a9af251"
+
+[[projects]]
+  name = "github.com/boltdb/bolt"
+  packages = ["."]
+  revision = "2f1ce7a837dcb8da3ec595b1dac9d0632f0f99e8"
+  version = "v1.3.1"
 
 [[projects]]
   branch = "master"
@@ -23,3 +29,9 @@ memo = "64655f24376b81dc084349470c81070a51a15fe5f22af4273009ee5f7a7c4693"
   name = "github.com/yanzay/tbot"
   packages = [".","internal/adapter","model"]
   revision = "1653d6ccb6b48e4e94454508838baea685433e8d"
+
+[[projects]]
+  branch = "master"
+  name = "golang.org/x/sys"
+  packages = ["unix"]
+  revision = "7a4fde3fda8ef580a89dbae8138c26041be14299"
