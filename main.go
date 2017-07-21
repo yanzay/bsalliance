@@ -11,7 +11,6 @@ import (
 	"github.com/yanzay/tbot"
 )
 
-const padWidth = 23
 const chatId = -1001119105956
 
 type Player struct {
