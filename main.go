@@ -4,6 +4,7 @@ import (
 	"flag"
 	"fmt"
 	"os"
+	"sort"
 	"strings"
 	"time"
 
@@ -48,9 +49,16 @@ func main() {
 }
 
 func immunesHandler(m *tbot.Message) {
-	lines := make([]string, 0)
 	immunes := gameStore.GetImmunes()
+	ims := make([]*Immune, 0)
 	for _, immune := range immunes {
+		ims = append(ims, immune)
+	}
+	sort.Slice(ims, func(i, j int) bool {
+		return ims[i].End.After(ims[j].End)
+	})
+	lines := make([]string, 0)
+	for _, immune := range ims {
 		line := pad(immune.Player.Name, roundDuration(time.Until(immune.End)).String())
 		lines = append(lines, line)
 	}
