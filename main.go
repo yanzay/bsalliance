@@ -42,6 +42,7 @@ func main() {
 		log.Fatal(err)
 	}
 	bot.HandleFunc("/immunes", immunesHandler)
+	bot.HandleFunc("/delete {name}", deleteHandler)
 	bot.HandleDefault(parseForwardHandler)
 	bot.ListenAndServe()
 }
@@ -59,6 +60,11 @@ func immunesHandler(m *tbot.Message) {
 		return
 	}
 	sendMarkdown(m, reply)
+}
+
+func deleteHandler(m *tbot.Message) {
+	gameStore.DeleteImmune(m.Vars["name"])
+	m.Reply("Имун удален")
 }
 
 func sendMarkdown(m *tbot.Message, str string) {

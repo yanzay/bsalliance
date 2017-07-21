@@ -91,18 +91,28 @@ func (gs *GameStore) AddImmune(player *Player, start time.Time) (*Immune, bool) 
 		return immune, false
 	}
 	gs.immunes[player.Name] = immune
+	gs.saveImmunes()
+	return immune, true
+}
 
+func (gs *GameStore) DeleteImmune(name string) {
+	gs.Lock()
+	defer gs.Unlock()
+	delete(gs.immunes, name)
+	gs.saveImmunes()
+}
+
+func (gs *GameStore) saveImmunes() error {
 	immunesBytes, err := json.Marshal(gs.immunes)
 	if err != nil {
 		log.Errorf("failed to marshal immunes: %q", err)
-		return immune, false
+		return err
 	}
 	log.Infof("Marshalled immunes: %s", string(immunesBytes))
-	gs.db.Update(func(tx *bolt.Tx) error {
+	return gs.db.Update(func(tx *bolt.Tx) error {
 		b := tx.Bucket(bucketName)
 		return b.Put(immunesKey, immunesBytes)
 	})
-	return immune, true
 }
 
 func (gs *GameStore) existingImmune(immune *Immune) bool {
