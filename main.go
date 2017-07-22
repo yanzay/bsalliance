@@ -143,6 +143,10 @@ func parseForwardHandler(m *tbot.Message) {
 			}
 		}
 		m.Replyf("%s: %s", printPlayers(players), forwardTime.String())
+		quote, ok := maybeQuote()
+		if ok {
+			m.Reply(quote)
+		}
 	} else if strings.HasPrefix(m.Data, "‼️Битва с") {
 		player := parseBattle(m.Data)
 		if player != nil {
@@ -151,6 +155,10 @@ func parseForwardHandler(m *tbot.Message) {
 				go waiter(immune, fmt.Sprintf("Имун закончился: %s", player.Name))
 			}
 			m.Replyf("%s: %s", player.Name, forwardTime.String())
+			quote, ok := maybeQuote()
+			if ok {
+				m.Reply(quote)
+			}
 		}
 	}
 }
