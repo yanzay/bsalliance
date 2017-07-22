@@ -35,6 +35,7 @@ func NewGameStore(file string) *GameStore {
 		return nil
 	})
 	immunes := make(map[string]*Immune)
+	users := make(map[string]bool)
 	var conquerorBytes []byte
 	db.View(func(tx *bolt.Tx) error {
 		b := tx.Bucket(bucketName)
@@ -42,14 +43,22 @@ func NewGameStore(file string) *GameStore {
 		err := json.Unmarshal(immunesBytes, &immunes)
 		if err != nil {
 			log.Errorf("can't unmarshal immunes %s: %q", string(immunesBytes), err)
+			return err
 		}
 		conquerorBytes = b.Get(conquerorKey)
+		usersBytes := b.Get(usersKey)
+		err = json.Unmarshal(usersBytes, &users)
+		if err != nil {
+			log.Errorf("can't unmarshal users %s: %q", string(immunesBytes), err)
+			return err
+		}
 		return nil
 	})
 	return &GameStore{
 		db:        db,
 		immunes:   immunes,
 		conqueror: &Player{Name: string(conquerorBytes)},
+		users:     users,
 	}
 }
 
