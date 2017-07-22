@@ -24,7 +24,10 @@ type Immune struct {
 	End    time.Time
 }
 
-var dbFile = flag.String("data", "bsalliance.db", "Database file")
+var (
+	dbFile    = flag.String("data", "bsalliance.db", "Database file")
+	adminUser = flag.String("admin", "yanzay", "Admin user")
+)
 
 var gameStore *GameStore
 
@@ -42,10 +45,32 @@ func main() {
 	if err != nil {
 		log.Fatal(err)
 	}
-	bot.HandleFunc("/immunes", immunesHandler)
-	bot.HandleFunc("/delete {name}", deleteHandler)
-	bot.HandleDefault(parseForwardHandler)
+	bot.HandleFunc("/immunes", onlyUsers(immunesHandler))
+	bot.HandleFunc("/delete {name}", onlyUsers(deleteHandler))
+	bot.HandleFunc("/adduser {user}", onlyAdmin(addUserHandler))
+	bot.HandleFunc("/deluser {user}", onlyAdmin(delUserHandler))
+	bot.HandleDefault(onlyUsers(parseForwardHandler))
 	bot.ListenAndServe()
+}
+
+func addUserHandler(m *tbot.Message) {
+	user := m.Vars["user"]
+	if user == "" {
+		m.Reply("User name required")
+		return
+	}
+	gameStore.AddUser(user)
+	m.Reply("OK")
+}
+
+func delUserHandler(m *tbot.Message) {
+	user := m.Vars["user"]
+	if user == "" {
+		m.Reply("User name required")
+		return
+	}
+	gameStore.DelUser(user)
+	m.Reply("OK")
 }
 
 func immunesHandler(m *tbot.Message) {

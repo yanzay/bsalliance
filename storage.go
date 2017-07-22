@@ -14,6 +14,7 @@ var (
 	bucketName   = []byte("bsalliance")
 	conquerorKey = []byte("conqueror")
 	immunesKey   = []byte("immunes")
+	usersKey     = []byte("users")
 )
 
 type GameStore struct {
@@ -21,6 +22,7 @@ type GameStore struct {
 	db        *bolt.DB
 	immunes   map[string]*Immune
 	conqueror *Player
+	users     map[string]bool
 }
 
 func NewGameStore(file string) *GameStore {
@@ -102,6 +104,27 @@ func (gs *GameStore) DeleteImmune(name string) {
 	gs.saveImmunes()
 }
 
+func (gs *GameStore) AddUser(name string) {
+	gs.Lock()
+	gs.users[name] = true
+	gs.saveUsers()
+	gs.Unlock()
+}
+
+func (gs *GameStore) DelUser(name string) {
+	gs.Lock()
+	delete(gs.users, name)
+	gs.saveUsers()
+	gs.Unlock()
+}
+
+func (gs *GameStore) IsUser(name string) bool {
+	gs.Lock()
+	_, ok := gs.users[name]
+	gs.Unlock()
+	return ok
+}
+
 func (gs *GameStore) saveImmunes() error {
 	immunesBytes, err := json.Marshal(gs.immunes)
 	if err != nil {
@@ -112,6 +135,19 @@ func (gs *GameStore) saveImmunes() error {
 	return gs.db.Update(func(tx *bolt.Tx) error {
 		b := tx.Bucket(bucketName)
 		return b.Put(immunesKey, immunesBytes)
+	})
+}
+
+func (gs *GameStore) saveUsers() error {
+	usersBytes, err := json.Marshal(gs.users)
+	if err != nil {
+		log.Errorf("failed to marshal users: %q", err)
+		return err
+	}
+	log.Infof("Marshalled users: %s", string(usersBytes))
+	return gs.db.Update(func(tx *bolt.Tx) error {
+		b := tx.Bucket(bucketName)
+		return b.Put(usersKey, usersBytes)
 	})
 }
 
