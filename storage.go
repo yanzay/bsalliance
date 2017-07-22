@@ -134,6 +134,16 @@ func (gs *GameStore) IsUser(name string) bool {
 	return ok
 }
 
+func (gs *GameStore) GetUsers() []string {
+	users := make([]string, 0)
+	gs.Lock()
+	for user := range gs.users {
+		users = append(users, user)
+	}
+	gs.Unlock()
+	return users
+}
+
 func (gs *GameStore) saveImmunes() error {
 	immunesBytes, err := json.Marshal(gs.immunes)
 	if err != nil {

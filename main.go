@@ -49,6 +49,7 @@ func main() {
 	bot.HandleFunc("/delete {name}", onlyUsers(deleteHandler))
 	bot.HandleFunc("/adduser {user}", onlyAdmin(addUserHandler))
 	bot.HandleFunc("/deluser {user}", onlyAdmin(delUserHandler))
+	bot.HandleFunc("/users", onlyAdmin(usersHandler))
 	bot.HandleDefault(onlyUsers(parseForwardHandler))
 	bot.ListenAndServe()
 }
@@ -71,6 +72,11 @@ func delUserHandler(m *tbot.Message) {
 	}
 	gameStore.DelUser(user)
 	m.Reply("OK")
+}
+
+func usersHandler(m *tbot.Message) {
+	users := gameStore.GetUsers()
+	sendMarkdown(m, strings.Join(users, "\n"))
 }
 
 func immunesHandler(m *tbot.Message) {
