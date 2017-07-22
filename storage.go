@@ -145,6 +145,7 @@ func (gs *GameStore) GetUsers() []string {
 }
 
 func (gs *GameStore) saveImmunes() error {
+	gs.expireImmunes()
 	immunesBytes, err := json.Marshal(gs.immunes)
 	if err != nil {
 		log.Errorf("failed to marshal immunes: %q", err)
@@ -183,6 +184,16 @@ func (gs *GameStore) immuneDuration(player *Player) time.Duration {
 		return immuneConquerorDuration
 	}
 	return immuneStandardDuration
+}
+
+func (gs *GameStore) expireImmunes() {
+	newImmunes := make(map[string]*Immune)
+	for name, immune := range gs.immunes {
+		if immune.End.After(time.Now().Add(-6 * time.Hour)) {
+			newImmunes[name] = immune
+		}
+	}
+	gs.immunes = newImmunes
 }
 
 func (gs *GameStore) runWaiters() {
