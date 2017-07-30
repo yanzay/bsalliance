@@ -6,7 +6,7 @@ import (
 
 func onlyUsers(f tbot.HandlerFunction) tbot.HandlerFunction {
 	return func(m *tbot.Message) {
-		if gameStore.IsUser(m.From.UserName) {
+		if gameStore.IsUser(m.From.UserName) || m.From.UserName == *adminUser {
 			f(m)
 			return
 		}

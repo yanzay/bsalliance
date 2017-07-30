@@ -116,14 +116,25 @@ func parseForwardHandler(m *tbot.Message) {
 	log.Println(m.ChatID)
 	log.Println(m.Data)
 	var replyTo int64
-	if m.ForwardDate == 0 {
-		return
-	}
 	if m.ChatType == model.ChatTypePrivate {
 		replyTo = m.ChatID
 	}
 	forwardTime := time.Unix(int64(m.ForwardDate), 0)
 	switch {
+	case m.Data == YesButton:
+		if responses[m.ChatID] != nil {
+			select {
+			case responses[m.ChatID] <- true:
+			default:
+			}
+		}
+	case m.Data == NoButton:
+		if responses[m.ChatID] != nil {
+			select {
+			case responses[m.ChatID] <- false:
+			default:
+			}
+		}
 	case strings.Contains(m.Data, "Статистика сервера"):
 		conqueror := parseConqueror(m.Data)
 		gameStore.SetConqueror(conqueror)
@@ -150,6 +161,14 @@ func parseForwardHandler(m *tbot.Message) {
 	case strings.HasPrefix(m.Data, "‼️Битва с"):
 		player := parseBattle(m.Data)
 		if player != nil {
+			if replyTo != 0 {
+				go farmer(forwardTime.Add(10*time.Minute), replyTo)
+				add := askToAdd(m)
+				if !add {
+					m.Reply("Хорошо, не будем")
+					return
+				}
+			}
 			immune, updated := gameStore.AddImmune(player, forwardTime)
 			if updated {
 				go waiter(immune, fmt.Sprintf("Имун закончился: %s", player.Name), replyTo)
@@ -161,6 +180,30 @@ func parseForwardHandler(m *tbot.Message) {
 	if ok {
 		m.Reply(quote)
 	}
+}
+
+const (
+	YesButton = "✅ Да"
+	NoButton  = "❌ Нет"
+)
+
+var responses = make(map[int64]chan bool)
+
+func askToAdd(m *tbot.Message) bool {
+	buttons := []string{YesButton, NoButton}
+	m.ReplyKeyboard("Отслеживать иммун?", [][]string{buttons}, tbot.OneTimeKeyboard)
+	responses[m.ChatID] = make(chan bool)
+	select {
+	case answer := <-responses[m.ChatID]:
+		return answer
+	case <-time.After(1 * time.Minute):
+		return false
+	}
+}
+
+func farmer(end time.Time, replyTo int64) {
+	<-time.After(time.Until(end))
+	bot.Send(replyTo, "Пора на ферму, ленивая задница!")
 }
 
 func waiter(immune *Immune, text string, replyTo int64) {
