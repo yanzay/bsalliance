@@ -13,7 +13,7 @@ import (
 	"github.com/yanzay/tbot/model"
 )
 
-const chatId = -1001119105956
+// const chatId = -1001119105956
 
 type Player struct {
 	Alliance string
@@ -28,6 +28,7 @@ type Immune struct {
 var (
 	dbFile    = flag.String("data", "bsalliance.db", "Database file")
 	adminUser = flag.String("admin", "yanzay", "Admin user")
+	chatId    = flag.Int64("chat", -1001119105956, "Chat ID for reporting")
 )
 
 var gameStore *GameStore
@@ -113,8 +114,8 @@ func sendMarkdown(m *tbot.Message, str string) {
 }
 
 func parseForwardHandler(m *tbot.Message) {
-	log.Println(m.ChatID)
-	log.Println(m.Data)
+	log.Info(m.ChatID)
+	log.Info(m.Data)
 	var replyTo int64
 	if m.ChatType == model.ChatTypePrivate {
 		replyTo = m.ChatID
@@ -144,18 +145,8 @@ func parseForwardHandler(m *tbot.Message) {
 		if players == nil {
 			return
 		}
-		conqueror, players := extractConqueror(players)
-		if conqueror != nil {
-			immune, updated := gameStore.AddImmune(conqueror, forwardTime)
-			if updated {
-				go waiter(immune, fmt.Sprintf("Имун завоевателя закончился: %s", conqueror.Name), replyTo)
-			}
-		}
 		for _, player := range players {
-			immune, updated := gameStore.AddImmune(player, forwardTime)
-			if updated {
-				go waiter(immune, fmt.Sprintf("Имун закончился: %s", player.Name), replyTo)
-			}
+			updateImmune(player, forwardTime, replyTo)
 		}
 		m.Replyf("%s: %s", printPlayers(players), forwardTime.String())
 	case strings.HasPrefix(m.Data, "‼️Битва с"):
@@ -169,16 +160,20 @@ func parseForwardHandler(m *tbot.Message) {
 					return
 				}
 			}
-			immune, updated := gameStore.AddImmune(player, forwardTime)
-			if updated {
-				go waiter(immune, fmt.Sprintf("Имун закончился: %s", player.Name), replyTo)
-			}
+			updateImmune(player, forwardTime, replyTo)
 			m.Replyf("%s: %s", player.Name, forwardTime.String())
 		}
 	}
 	quote, ok := maybeQuote()
 	if ok {
 		m.Reply(quote)
+	}
+}
+
+func updateImmune(player *Player, forwardTime time.Time, replyTo int64) {
+	immune, updated := gameStore.AddImmune(player, forwardTime)
+	if updated {
+		go waiter(immune, fmt.Sprintf("Имун закончился: %s", player.Name), replyTo)
 	}
 }
 
@@ -208,7 +203,7 @@ func farmer(end time.Time, replyTo int64) {
 
 func waiter(immune *Immune, text string, replyTo int64) {
 	<-time.After(time.Until(immune.End))
-	bot.Send(chatId, text)
+	bot.Send(*chatId, text)
 	if replyTo != 0 {
 		bot.Send(replyTo, text)
 	}
