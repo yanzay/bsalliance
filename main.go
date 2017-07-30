@@ -10,6 +10,7 @@ import (
 
 	"github.com/yanzay/log"
 	"github.com/yanzay/tbot"
+	"github.com/yanzay/tbot/model"
 )
 
 const chatId = -1001119105956
@@ -113,18 +114,21 @@ func sendMarkdown(m *tbot.Message, str string) {
 
 func parseForwardHandler(m *tbot.Message) {
 	log.Println(m.ChatID)
+	log.Println(m.Data)
+	var replyTo int64
 	if m.ForwardDate == 0 {
 		return
 	}
-	if strings.Contains(m.Data, "Статистика сервера") {
+	if m.ChatType == model.ChatTypePrivate {
+		replyTo = m.ChatID
+	}
+	forwardTime := time.Unix(int64(m.ForwardDate), 0)
+	switch {
+	case strings.Contains(m.Data, "Статистика сервера"):
 		conqueror := parseConqueror(m.Data)
 		gameStore.SetConqueror(conqueror)
 		m.Replyf("Завоеватель: %s", gameStore.GetConqueror().Name)
-		return
-	}
-	forwardTime := time.Unix(int64(m.ForwardDate), 0)
-	log.Println(m.Data)
-	if strings.HasPrefix(m.Data, "‼️Битва с альянсом") {
+	case strings.HasPrefix(m.Data, "‼️Битва с альянсом"):
 		players := parseAllianceBattle(m.Data)
 		if players == nil {
 			return
@@ -133,39 +137,38 @@ func parseForwardHandler(m *tbot.Message) {
 		if conqueror != nil {
 			immune, updated := gameStore.AddImmune(conqueror, forwardTime)
 			if updated {
-				go waiter(immune, fmt.Sprintf("Имун завоевателя закончился: %s", conqueror.Name))
+				go waiter(immune, fmt.Sprintf("Имун завоевателя закончился: %s", conqueror.Name), replyTo)
 			}
 		}
 		for _, player := range players {
 			immune, updated := gameStore.AddImmune(player, forwardTime)
 			if updated {
-				go waiter(immune, fmt.Sprintf("Имун закончился: %s", player.Name))
+				go waiter(immune, fmt.Sprintf("Имун закончился: %s", player.Name), replyTo)
 			}
 		}
 		m.Replyf("%s: %s", printPlayers(players), forwardTime.String())
-		quote, ok := maybeQuote()
-		if ok {
-			m.Reply(quote)
-		}
-	} else if strings.HasPrefix(m.Data, "‼️Битва с") {
+	case strings.HasPrefix(m.Data, "‼️Битва с"):
 		player := parseBattle(m.Data)
 		if player != nil {
 			immune, updated := gameStore.AddImmune(player, forwardTime)
 			if updated {
-				go waiter(immune, fmt.Sprintf("Имун закончился: %s", player.Name))
+				go waiter(immune, fmt.Sprintf("Имун закончился: %s", player.Name), replyTo)
 			}
 			m.Replyf("%s: %s", player.Name, forwardTime.String())
-			quote, ok := maybeQuote()
-			if ok {
-				m.Reply(quote)
-			}
 		}
+	}
+	quote, ok := maybeQuote()
+	if ok {
+		m.Reply(quote)
 	}
 }
 
-func waiter(immune *Immune, text string) {
+func waiter(immune *Immune, text string, replyTo int64) {
 	<-time.After(time.Until(immune.End))
 	bot.Send(chatId, text)
+	if replyTo != 0 {
+		bot.Send(replyTo, text)
+	}
 }
 
 func printPlayers(players []*Player) string {

@@ -201,7 +201,7 @@ func (gs *GameStore) runWaiters() {
 	defer gs.Unlock()
 	for _, immune := range gs.immunes {
 		if immune.End.After(time.Now()) {
-			go waiter(immune, fmt.Sprintf("Имун закончился: %s", immune.Player.Name))
+			go waiter(immune, fmt.Sprintf("Имун закончился: %s", immune.Player.Name), 0)
 		}
 	}
 }
