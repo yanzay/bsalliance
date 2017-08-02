@@ -81,7 +81,7 @@ func main() {
 	bot.HandleFunc("/delete {name}", onlyUsers(deleteHandler))
 	bot.HandleFunc("/adduser {user}", onlyAdmin(addUserHandler))
 	bot.HandleFunc("/deluser {user}", onlyAdmin(delUserHandler))
-	bot.HandleFunc("/users", onlyAdmin(usersHandler))
+	bot.HandleFunc("/users", onlyUsers(usersHandler))
 	bot.HandleDefault(onlyUsers(parseForwardHandler))
 	bot.ListenAndServe()
 }
