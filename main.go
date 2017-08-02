@@ -13,8 +13,6 @@ import (
 	"github.com/yanzay/tbot/model"
 )
 
-const chatId = -1001119105956
-
 type Player struct {
 	Alliance string
 	Name     string
@@ -25,9 +23,36 @@ type Immune struct {
 	End    time.Time
 }
 
+// Assets
+var (
+	MessageNoImmunes     = "Известных иммунов нет"
+	MessageImmuneDeleted = "Имун удален"
+	MessageTrackImmune   = "Отслеживать иммун?"
+	MessageTimeToFarm    = "Пора на ферму, ленивая задница!"
+	MessageEndOfImmune   = "Имун закончился: %s"
+	MessageDontTrack     = "Хорошо, не будем"
+	MessageConqueror     = "Завоеватель: %s"
+)
+
+// Message parts
+var (
+	ServerStatistics   = "Статистика сервера"
+	BattleWithAlliance = "‼️Битва с альянсом"
+	BattleWith         = "‼️Битва с"
+)
+
+// Buttons
+var (
+	YesButton = "✅ Да"
+	NoButton  = "❌ Нет"
+)
+
 var (
 	dbFile    = flag.String("data", "bsalliance.db", "Database file")
 	adminUser = flag.String("admin", "yanzay", "Admin user")
+	chatID    = flag.Int64("chat", -1001119105956, "Chat ID for reporting")
+	eng       = flag.Bool("eng", false, "English locale")
+	cardinal  = flag.String("c", "", "Cardinal user")
 )
 
 var gameStore *GameStore
@@ -37,8 +62,14 @@ var immuneConquerorDuration = 30 * time.Minute
 
 var bot *tbot.Server
 
-func main() {
+func init() {
 	flag.Parse()
+	if *eng {
+		setEngLocale()
+	}
+}
+
+func main() {
 	gameStore = NewGameStore(*dbFile)
 	gameStore.runWaiters()
 	var err error
@@ -96,7 +127,7 @@ func immunesHandler(m *tbot.Message) {
 	}
 	reply := strings.Join(lines, "\n")
 	if reply == "" {
-		m.Reply("Известных иммунов нет")
+		m.Reply(MessageNoImmunes)
 		return
 	}
 	sendMarkdown(m, reply)
@@ -104,7 +135,7 @@ func immunesHandler(m *tbot.Message) {
 
 func deleteHandler(m *tbot.Message) {
 	gameStore.DeleteImmune(m.Vars["name"])
-	m.Reply("Имун удален")
+	m.Reply(MessageImmuneDeleted)
 }
 
 func sendMarkdown(m *tbot.Message, str string) {
@@ -113,8 +144,8 @@ func sendMarkdown(m *tbot.Message, str string) {
 }
 
 func parseForwardHandler(m *tbot.Message) {
-	log.Println(m.ChatID)
-	log.Println(m.Data)
+	log.Info(m.ChatID)
+	log.Info(m.Data)
 	var replyTo int64
 	if m.ChatType == model.ChatTypePrivate {
 		replyTo = m.ChatID
@@ -135,44 +166,31 @@ func parseForwardHandler(m *tbot.Message) {
 			default:
 			}
 		}
-	case strings.Contains(m.Data, "Статистика сервера"):
+	case strings.Contains(m.Data, ServerStatistics):
 		conqueror := parseConqueror(m.Data)
 		gameStore.SetConqueror(conqueror)
-		m.Replyf("Завоеватель: %s", gameStore.GetConqueror().Name)
-	case strings.HasPrefix(m.Data, "‼️Битва с альянсом"):
+		m.Replyf(MessageConqueror, gameStore.GetConqueror().Name)
+	case strings.HasPrefix(m.Data, BattleWithAlliance):
 		players := parseAllianceBattle(m.Data)
 		if players == nil {
 			return
 		}
-		conqueror, players := extractConqueror(players)
-		if conqueror != nil {
-			immune, updated := gameStore.AddImmune(conqueror, forwardTime)
-			if updated {
-				go waiter(immune, fmt.Sprintf("Имун завоевателя закончился: %s", conqueror.Name), replyTo)
-			}
-		}
 		for _, player := range players {
-			immune, updated := gameStore.AddImmune(player, forwardTime)
-			if updated {
-				go waiter(immune, fmt.Sprintf("Имун закончился: %s", player.Name), replyTo)
-			}
+			updateImmune(player, forwardTime, replyTo)
 		}
 		m.Replyf("%s: %s", printPlayers(players), forwardTime.String())
-	case strings.HasPrefix(m.Data, "‼️Битва с"):
+	case strings.HasPrefix(m.Data, BattleWith):
 		player := parseBattle(m.Data)
 		if player != nil {
 			if replyTo != 0 {
 				go farmer(forwardTime.Add(10*time.Minute), replyTo)
 				add := askToAdd(m)
 				if !add {
-					m.Reply("Хорошо, не будем")
+					m.Reply(MessageDontTrack)
 					return
 				}
 			}
-			immune, updated := gameStore.AddImmune(player, forwardTime)
-			if updated {
-				go waiter(immune, fmt.Sprintf("Имун закончился: %s", player.Name), replyTo)
-			}
+			updateImmune(player, forwardTime, replyTo)
 			m.Replyf("%s: %s", player.Name, forwardTime.String())
 		}
 	}
@@ -182,16 +200,18 @@ func parseForwardHandler(m *tbot.Message) {
 	}
 }
 
-const (
-	YesButton = "✅ Да"
-	NoButton  = "❌ Нет"
-)
+func updateImmune(player *Player, forwardTime time.Time, replyTo int64) {
+	immune, updated := gameStore.AddImmune(player, forwardTime)
+	if updated {
+		go waiter(immune, fmt.Sprintf(MessageEndOfImmune, player.Name), replyTo)
+	}
+}
 
 var responses = make(map[int64]chan bool)
 
 func askToAdd(m *tbot.Message) bool {
 	buttons := []string{YesButton, NoButton}
-	m.ReplyKeyboard("Отслеживать иммун?", [][]string{buttons}, tbot.OneTimeKeyboard)
+	m.ReplyKeyboard(MessageTrackImmune, [][]string{buttons}, tbot.OneTimeKeyboard)
 	responses[m.ChatID] = make(chan bool)
 	select {
 	case answer := <-responses[m.ChatID]:
@@ -203,12 +223,12 @@ func askToAdd(m *tbot.Message) bool {
 
 func farmer(end time.Time, replyTo int64) {
 	<-time.After(time.Until(end))
-	bot.Send(replyTo, "Пора на ферму, ленивая задница!")
+	bot.Send(replyTo, MessageTimeToFarm)
 }
 
 func waiter(immune *Immune, text string, replyTo int64) {
 	<-time.After(time.Until(immune.End))
-	bot.Send(chatId, text)
+	bot.Send(*chatID, text)
 	if replyTo != 0 {
 		bot.Send(replyTo, text)
 	}

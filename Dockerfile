@@ -6,4 +6,6 @@ EXPOSE 8014
 
 COPY bsalliance /
 
-ENTRYPOINT ["/bsalliance", "--data", "/data/bsalliance.db"]
+ENTRYPOINT ["/bsalliance"]
+
+CMD ["--help"]

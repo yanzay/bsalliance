@@ -31,7 +31,7 @@ func randomQuote() string {
 }
 
 func maybeQuote() (string, bool) {
-	if rand.Intn(100) < 5 {
+	if rand.Intn(100) < 3 {
 		return randomQuote(), true
 	}
 	return "", false

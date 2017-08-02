@@ -24,6 +24,7 @@ pipeline:
     script:
       - cd infra
       - docker-compose pull bsalliance
+      - docker-compose pull cdcalliance
       - docker-compose up -d
     when:
       status: success

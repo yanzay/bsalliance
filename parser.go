@@ -1,7 +1,6 @@
 package main
 
 import (
-	"log"
 	"regexp"
 	"strings"
 )
@@ -9,6 +8,15 @@ import (
 var (
 	battleRegExp = regexp.MustCompile(`Битва с ([^[:ascii:]]?\[[^[:ascii:]]*\])?(.*) окончена`)
 	statRegExp   = regexp.MustCompile(`Завоеватель:\s+(\[[^[:ascii:]]*\])?(.*)`)
+)
+
+// Message parts
+var (
+	Congratulations = "Поздравляю"
+	LosersPrefix    = "Проигравшие: "
+	WinnersPrefix   = "Победители: "
+	LoseBattle      = "К сожалению"
+	WinBattle       = "Поздравляю"
 )
 
 func parseConqueror(message string) *Player {
@@ -27,13 +35,11 @@ func parseBattle(message string) *Player {
 	if len(matches) < 3 {
 		return nil
 	}
-	log.Printf("Alliance: %s", matches[1])
-	log.Printf("Name: %s", matches[2])
 	return &Player{Alliance: matches[1], Name: matches[2]}
 }
 
 func parseAllianceBattle(message string) []*Player {
-	if strings.Contains(message, "Поздравляю") {
+	if strings.Contains(message, Congratulations) {
 		return parseWinAllianceBattle(message)
 	}
 	return parseLoseAllianceBattle(message)
@@ -56,8 +62,8 @@ func parseLoseAllianceBattle(message string) []*Player {
 func parseLosers(message string) []*Player {
 	lines := strings.Split(message, "\n")
 	for _, line := range lines {
-		if strings.HasPrefix(line, "Проигравшие: ") {
-			loseStr := strings.TrimPrefix(line, "Проигравшие: ")
+		if strings.HasPrefix(line, LosersPrefix) {
+			loseStr := strings.TrimPrefix(line, LosersPrefix)
 			players := make([]*Player, 0)
 			names := strings.Split(loseStr, ", ")
 			for _, name := range names {
@@ -72,10 +78,10 @@ func parseLosers(message string) []*Player {
 func parseWinners(message string) []*Player {
 	lines := strings.Split(message, "\n")
 	for _, line := range lines {
-		if strings.HasPrefix(line, "Победители: ") {
-			loseStr := strings.TrimPrefix(line, "Победители: ")
+		if strings.HasPrefix(line, WinnersPrefix) {
+			winStr := strings.TrimPrefix(line, WinnersPrefix)
 			players := make([]*Player, 0)
-			names := strings.Split(loseStr, ", ")
+			names := strings.Split(winStr, ", ")
 			for _, name := range names {
 				players = append(players, &Player{Name: name})
 			}
@@ -86,6 +92,6 @@ func parseWinners(message string) []*Player {
 }
 
 func battleAttack(message string) bool {
-	return strings.Contains(message, "К сожалению") && !strings.Contains(message, "🗺") ||
-		strings.Contains(message, "Поздравляю") && strings.Contains(message, "🗺")
+	return strings.Contains(message, LoseBattle) && !strings.Contains(message, "🗺") ||
+		strings.Contains(message, WinBattle) && strings.Contains(message, "🗺")
 }
