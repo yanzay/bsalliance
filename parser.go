@@ -1,7 +1,6 @@
 package main
 
 import (
-	"log"
 	"regexp"
 	"strings"
 )
@@ -27,8 +26,6 @@ func parseBattle(message string) *Player {
 	if len(matches) < 3 {
 		return nil
 	}
-	log.Printf("Alliance: %s", matches[1])
-	log.Printf("Name: %s", matches[2])
 	return &Player{Alliance: matches[1], Name: matches[2]}
 }
 
@@ -73,9 +70,9 @@ func parseWinners(message string) []*Player {
 	lines := strings.Split(message, "\n")
 	for _, line := range lines {
 		if strings.HasPrefix(line, "Победители: ") {
-			loseStr := strings.TrimPrefix(line, "Победители: ")
+			winStr := strings.TrimPrefix(line, "Победители: ")
 			players := make([]*Player, 0)
-			names := strings.Split(loseStr, ", ")
+			names := strings.Split(winStr, ", ")
 			for _, name := range names {
 				players = append(players, &Player{Name: name})
 			}

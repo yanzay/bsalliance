@@ -13,8 +13,6 @@ import (
 	"github.com/yanzay/tbot/model"
 )
 
-// const chatId = -1001119105956
-
 type Player struct {
 	Alliance string
 	Name     string
@@ -25,10 +23,26 @@ type Immune struct {
 	End    time.Time
 }
 
+// Assets
+const (
+	MessageNoImmunes     = "Известных иммунов нет"
+	MessageImmuneDeleted = "Имун удален"
+	MessageTrackImmune   = "Отслеживать иммун?"
+	MessageTimeToFarm    = "Пора на ферму, ленивая задница!"
+	MessageEndOfImmune   = "Имун закончился: %s"
+	MessageDontTrack     = "Хорошо, не будем"
+)
+
+// Buttons
+const (
+	YesButton = "✅ Да"
+	NoButton  = "❌ Нет"
+)
+
 var (
 	dbFile    = flag.String("data", "bsalliance.db", "Database file")
 	adminUser = flag.String("admin", "yanzay", "Admin user")
-	chatId    = flag.Int64("chat", -1001119105956, "Chat ID for reporting")
+	chatID    = flag.Int64("chat", -1001119105956, "Chat ID for reporting")
 )
 
 var gameStore *GameStore
@@ -97,7 +111,7 @@ func immunesHandler(m *tbot.Message) {
 	}
 	reply := strings.Join(lines, "\n")
 	if reply == "" {
-		m.Reply("Известных иммунов нет")
+		m.Reply(MessageNoImmunes)
 		return
 	}
 	sendMarkdown(m, reply)
@@ -105,7 +119,7 @@ func immunesHandler(m *tbot.Message) {
 
 func deleteHandler(m *tbot.Message) {
 	gameStore.DeleteImmune(m.Vars["name"])
-	m.Reply("Имун удален")
+	m.Reply(MessageImmuneDeleted)
 }
 
 func sendMarkdown(m *tbot.Message, str string) {
@@ -156,7 +170,7 @@ func parseForwardHandler(m *tbot.Message) {
 				go farmer(forwardTime.Add(10*time.Minute), replyTo)
 				add := askToAdd(m)
 				if !add {
-					m.Reply("Хорошо, не будем")
+					m.Reply(MessageDontTrack)
 					return
 				}
 			}
@@ -173,20 +187,15 @@ func parseForwardHandler(m *tbot.Message) {
 func updateImmune(player *Player, forwardTime time.Time, replyTo int64) {
 	immune, updated := gameStore.AddImmune(player, forwardTime)
 	if updated {
-		go waiter(immune, fmt.Sprintf("Имун закончился: %s", player.Name), replyTo)
+		go waiter(immune, fmt.Sprintf(MessageEndOfImmune, player.Name), replyTo)
 	}
 }
-
-const (
-	YesButton = "✅ Да"
-	NoButton  = "❌ Нет"
-)
 
 var responses = make(map[int64]chan bool)
 
 func askToAdd(m *tbot.Message) bool {
 	buttons := []string{YesButton, NoButton}
-	m.ReplyKeyboard("Отслеживать иммун?", [][]string{buttons}, tbot.OneTimeKeyboard)
+	m.ReplyKeyboard(MessageTrackImmune, [][]string{buttons}, tbot.OneTimeKeyboard)
 	responses[m.ChatID] = make(chan bool)
 	select {
 	case answer := <-responses[m.ChatID]:
@@ -198,12 +207,12 @@ func askToAdd(m *tbot.Message) bool {
 
 func farmer(end time.Time, replyTo int64) {
 	<-time.After(time.Until(end))
-	bot.Send(replyTo, "Пора на ферму, ленивая задница!")
+	bot.Send(replyTo, MessageTimeToFarm)
 }
 
 func waiter(immune *Immune, text string, replyTo int64) {
 	<-time.After(time.Until(immune.End))
-	bot.Send(*chatId, text)
+	bot.Send(*chatID, text)
 	if replyTo != 0 {
 		bot.Send(replyTo, text)
 	}
