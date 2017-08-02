@@ -37,3 +37,6 @@ pipeline:
     secrets:
       - source: NOTIFICATION_TOKEN
         target: PLUGIN_TOKEN
+
+branches: master
+
