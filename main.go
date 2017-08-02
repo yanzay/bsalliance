@@ -24,17 +24,25 @@ type Immune struct {
 }
 
 // Assets
-const (
+var (
 	MessageNoImmunes     = "Известных иммунов нет"
 	MessageImmuneDeleted = "Имун удален"
 	MessageTrackImmune   = "Отслеживать иммун?"
 	MessageTimeToFarm    = "Пора на ферму, ленивая задница!"
 	MessageEndOfImmune   = "Имун закончился: %s"
 	MessageDontTrack     = "Хорошо, не будем"
+	MessageConqueror     = "Завоеватель: %s"
+)
+
+// Message parts
+var (
+	ServerStatistics   = "Статистика сервера"
+	BattleWithAlliance = "‼️Битва с альянсом"
+	BattleWith         = "‼️Битва с"
 )
 
 // Buttons
-const (
+var (
 	YesButton = "✅ Да"
 	NoButton  = "❌ Нет"
 )
@@ -43,6 +51,8 @@ var (
 	dbFile    = flag.String("data", "bsalliance.db", "Database file")
 	adminUser = flag.String("admin", "yanzay", "Admin user")
 	chatID    = flag.Int64("chat", -1001119105956, "Chat ID for reporting")
+	eng       = flag.Bool("eng", false, "English locale")
+	cardinal  = flag.String("c", "", "Cardinal user")
 )
 
 var gameStore *GameStore
@@ -52,8 +62,14 @@ var immuneConquerorDuration = 30 * time.Minute
 
 var bot *tbot.Server
 
-func main() {
+func init() {
 	flag.Parse()
+	if *eng {
+		setEngLocale()
+	}
+}
+
+func main() {
 	gameStore = NewGameStore(*dbFile)
 	gameStore.runWaiters()
 	var err error
@@ -150,11 +166,11 @@ func parseForwardHandler(m *tbot.Message) {
 			default:
 			}
 		}
-	case strings.Contains(m.Data, "Статистика сервера"):
+	case strings.Contains(m.Data, ServerStatistics):
 		conqueror := parseConqueror(m.Data)
 		gameStore.SetConqueror(conqueror)
-		m.Replyf("Завоеватель: %s", gameStore.GetConqueror().Name)
-	case strings.HasPrefix(m.Data, "‼️Битва с альянсом"):
+		m.Replyf(MessageConqueror, gameStore.GetConqueror().Name)
+	case strings.HasPrefix(m.Data, BattleWithAlliance):
 		players := parseAllianceBattle(m.Data)
 		if players == nil {
 			return
@@ -163,7 +179,7 @@ func parseForwardHandler(m *tbot.Message) {
 			updateImmune(player, forwardTime, replyTo)
 		}
 		m.Replyf("%s: %s", printPlayers(players), forwardTime.String())
-	case strings.HasPrefix(m.Data, "‼️Битва с"):
+	case strings.HasPrefix(m.Data, BattleWith):
 		player := parseBattle(m.Data)
 		if player != nil {
 			if replyTo != 0 {
