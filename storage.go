@@ -63,6 +63,9 @@ func NewGameStore(file string) *GameStore {
 }
 
 func (gs *GameStore) SetConqueror(player *Player) {
+	if player == nil {
+		return
+	}
 	gs.Lock()
 	gs.conqueror = player
 	gs.db.Update(func(tx *bolt.Tx) error {

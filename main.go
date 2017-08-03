@@ -166,6 +166,7 @@ func parseForwardHandler(m *tbot.Message) {
 			default:
 			}
 		}
+	case m.ForwardDate == 0:
 	case strings.Contains(m.Data, ServerStatistics):
 		conqueror := parseConqueror(m.Data)
 		gameStore.SetConqueror(conqueror)
