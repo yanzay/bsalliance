@@ -229,6 +229,10 @@ func farmer(end time.Time, replyTo int64) {
 
 func waiter(immune *Immune, text string, replyTo int64) {
 	<-time.After(time.Until(immune.End))
+	saved := gameStore.GetImmune(immune.Player.Name)
+	if saved == nil {
+		return
+	}
 	bot.Send(*chatID, text)
 	if replyTo != 0 {
 		bot.Send(replyTo, text)
