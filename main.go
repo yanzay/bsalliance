@@ -69,6 +69,13 @@ func init() {
 	}
 }
 
+func logger(f tbot.HandlerFunction) tbot.HandlerFunction {
+	return func(m *tbot.Message) {
+		log.Infof("[%d] %s (%s): %s", m.ChatID, m.From.UserName, m.From.UserName, m.Text())
+		f(m)
+	}
+}
+
 func main() {
 	gameStore = NewGameStore(*dbFile)
 	gameStore.runWaiters()
@@ -77,6 +84,7 @@ func main() {
 	if err != nil {
 		log.Fatal(err)
 	}
+	bot.AddMiddleware(logger)
 	bot.HandleFunc("/immunes", onlyUsers(immunesHandler))
 	bot.HandleFunc("/delete {name}", onlyUsers(deleteHandler))
 	bot.HandleFunc("/adduser {user}", onlyAdmin(addUserHandler))
@@ -144,8 +152,6 @@ func sendMarkdown(m *tbot.Message, str string) {
 }
 
 func parseForwardHandler(m *tbot.Message) {
-	log.Info(m.ChatID)
-	log.Info(m.Data)
 	var replyTo int64
 	if m.ChatType == model.ChatTypePrivate {
 		replyTo = m.ChatID
