@@ -71,7 +71,7 @@ func init() {
 
 func logger(f tbot.HandlerFunction) tbot.HandlerFunction {
 	return func(m *tbot.Message) {
-		log.Infof("[%d] %s (%s): %s", m.ChatID, m.From.UserName, m.From.UserName, m.Text())
+		log.Infof("[%d] %s (%s): %s", m.ChatID, m.From.FirstName, m.From.UserName, m.Text())
 		f(m)
 	}
 }
@@ -86,12 +86,18 @@ func main() {
 	}
 	bot.AddMiddleware(logger)
 	bot.HandleFunc("/immunes", onlyUsers(immunesHandler))
+	bot.HandleFunc("/clear", onlyUsers(clearHandler))
 	bot.HandleFunc("/delete {name}", onlyUsers(deleteHandler))
 	bot.HandleFunc("/adduser {user}", onlyAdmin(addUserHandler))
 	bot.HandleFunc("/deluser {user}", onlyAdmin(delUserHandler))
 	bot.HandleFunc("/users", onlyUsers(usersHandler))
 	bot.HandleDefault(onlyUsers(parseForwardHandler))
 	bot.ListenAndServe()
+}
+
+func clearHandler(m *tbot.Message) {
+	gameStore.ClearImmunes()
+	m.Reply("OK")
 }
 
 func addUserHandler(m *tbot.Message) {

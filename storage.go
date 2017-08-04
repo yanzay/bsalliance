@@ -116,6 +116,13 @@ func (gs *GameStore) DeleteImmune(name string) {
 	gs.saveImmunes()
 }
 
+func (gs *GameStore) ClearImmunes() {
+	gs.Lock()
+	defer gs.Unlock()
+	gs.immunes = make(map[string]*Immune)
+	gs.saveImmunes()
+}
+
 func (gs *GameStore) AddUser(name string) {
 	gs.Lock()
 	gs.users[name] = true
