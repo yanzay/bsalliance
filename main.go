@@ -39,6 +39,10 @@ var (
 	ServerStatistics   = "Статистика сервера"
 	BattleWithAlliance = "‼️Битва с альянсом"
 	BattleWith         = "‼️Битва с"
+
+	ServerStatisticsRu   = "Статистика сервера"
+	BattleWithAllianceRu = "‼️Битва с альянсом"
+	BattleWithRu         = "‼️Битва с"
 )
 
 // Buttons
@@ -179,11 +183,11 @@ func parseForwardHandler(m *tbot.Message) {
 			}
 		}
 	case m.ForwardDate == 0:
-	case strings.Contains(m.Data, ServerStatistics):
+	case isServerStatistics(m.Data):
 		conqueror := parseConqueror(m.Data)
 		gameStore.SetConqueror(conqueror)
 		m.Replyf(MessageConqueror, gameStore.GetConqueror().Name)
-	case strings.HasPrefix(m.Data, BattleWithAlliance):
+	case isBattleWithAlliance(m.Data):
 		players := parseAllianceBattle(m.Data)
 		if players == nil {
 			return
@@ -192,7 +196,7 @@ func parseForwardHandler(m *tbot.Message) {
 			updateImmune(player, forwardTime, replyTo)
 		}
 		m.Replyf("%s: %s", printPlayers(players), forwardTime.String())
-	case strings.HasPrefix(m.Data, BattleWith):
+	case isBattleWith(m.Data):
 		player := parseBattle(m.Data)
 		if player != nil {
 			if replyTo != 0 {
@@ -211,6 +215,21 @@ func parseForwardHandler(m *tbot.Message) {
 	if ok {
 		m.Reply(quote)
 	}
+}
+
+func isBattleWithAlliance(msg string) bool {
+	return strings.HasPrefix(msg, BattleWithAlliance) ||
+		strings.HasPrefix(msg, BattleWithAllianceRu)
+}
+
+func isBattleWith(msg string) bool {
+	return strings.HasPrefix(msg, BattleWith) ||
+		strings.HasPrefix(msg, BattleWithRu)
+}
+
+func isServerStatistics(msg string) bool {
+	return strings.Contains(msg, ServerStatistics) ||
+		strings.Contains(msg, ServerStatisticsRu)
 }
 
 func updateImmune(player *Player, forwardTime time.Time, replyTo int64) {
