@@ -79,7 +79,7 @@ func parseLosers(message string) []*Player {
 	for _, line := range lines {
 		if strings.HasPrefix(line, LosersPrefix) || strings.HasPrefix(line, LosersPrefixRu) {
 			loseStr := strings.TrimPrefix(line, LosersPrefix)
-			loseStr = strings.TrimPrefix(line, LosersPrefixRu)
+			loseStr = strings.TrimPrefix(loseStr, LosersPrefixRu)
 			players := make([]*Player, 0)
 			names := strings.Split(loseStr, ", ")
 			for _, name := range names {
@@ -96,7 +96,7 @@ func parseWinners(message string) []*Player {
 	for _, line := range lines {
 		if strings.HasPrefix(line, WinnersPrefix) || strings.HasPrefix(line, WinnersPrefixRu) {
 			winStr := strings.TrimPrefix(line, WinnersPrefix)
-			winStr = strings.TrimPrefix(line, WinnersPrefixRu)
+			winStr = strings.TrimPrefix(winStr, WinnersPrefixRu)
 			players := make([]*Player, 0)
 			names := strings.Split(winStr, ", ")
 			for _, name := range names {
