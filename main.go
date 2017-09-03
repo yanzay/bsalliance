@@ -57,6 +57,7 @@ var (
 	chatID    = flag.Int64("chat", -1001119105956, "Chat ID for reporting")
 	eng       = flag.Bool("eng", false, "English locale")
 	cardinal  = flag.String("c", "", "Cardinal user")
+	noClear   = flag.Bool("no-clear", false, "Disable clear command")
 )
 
 var gameStore *GameStore
@@ -100,6 +101,10 @@ func main() {
 }
 
 func clearHandler(m *tbot.Message) {
+	if *noClear {
+		m.Reply("NO! NO! GOD, NO!")
+		return
+	}
 	gameStore.ClearImmunes()
 	m.Reply("OK")
 }
