@@ -135,6 +135,9 @@ func usersHandler(m *tbot.Message) {
 }
 
 func immunesHandler(m *tbot.Message) {
+	if m.ChatType != model.ChatTypePrivate {
+		return
+	}
 	immunes := gameStore.GetImmunes()
 	ims := make([]*Immune, 0)
 	for _, immune := range immunes {
@@ -167,10 +170,10 @@ func sendMarkdown(m *tbot.Message, str string) {
 }
 
 func parseForwardHandler(m *tbot.Message) {
-	var replyTo int64
-	if m.ChatType == model.ChatTypePrivate {
-		replyTo = m.ChatID
+	if m.ChatType != model.ChatTypePrivate {
+		return
 	}
+	var replyTo = m.ChatID
 	forwardTime := time.Unix(int64(m.ForwardDate), 0)
 	switch {
 	case m.Data == YesButton:
