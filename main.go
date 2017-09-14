@@ -52,12 +52,14 @@ var (
 )
 
 var (
-	dbFile    = flag.String("data", "bsalliance.db", "Database file")
-	adminUser = flag.String("admin", "yanzay", "Admin user")
-	chatID    = flag.Int64("chat", -1001119105956, "Chat ID for reporting")
-	eng       = flag.Bool("eng", false, "English locale")
-	cardinal  = flag.String("c", "", "Cardinal user")
-	noClear   = flag.Bool("no-clear", false, "Disable clear command")
+	dbFile       = flag.String("data", "bsalliance.db", "Database file")
+	adminUser    = flag.String("admin", "yanzay", "Admin user")
+	chatID       = flag.Int64("chat", -1001119105956, "Chat ID for reporting")
+	eng          = flag.Bool("eng", false, "English locale")
+	cardinal     = flag.String("c", "", "Cardinal user")
+	noClear      = flag.Bool("no-clear", false, "Disable clear command")
+	influxDB     = flag.String("influx", "http://influxdb:8086/", "Influx db address")
+	influxDBName = flag.String("influx-name", "ally", "Influx db database name")
 )
 
 var gameStore *GameStore
@@ -72,6 +74,7 @@ func init() {
 	if *eng {
 		setEngLocale()
 	}
+	initDB()
 }
 
 func logger(f tbot.HandlerFunction) tbot.HandlerFunction {
@@ -191,6 +194,8 @@ func parseForwardHandler(m *tbot.Message) {
 			}
 		}
 	case m.ForwardDate == 0:
+	case isAllianceMembers(m.Data):
+		allianceForwardHandler(m)
 	case isServerStatistics(m.Data):
 		conqueror := parseConqueror(m.Data)
 		gameStore.SetConqueror(conqueror)
