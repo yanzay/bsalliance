@@ -15,6 +15,7 @@ var (
 	conquerorKey = []byte("conqueror")
 	immunesKey   = []byte("immunes")
 	usersKey     = []byte("users")
+	warsKey      = []byte("wars")
 )
 
 type GameStore struct {
@@ -23,6 +24,7 @@ type GameStore struct {
 	immunes   map[string]*Immune
 	conqueror *Player
 	users     map[string]bool
+	wars      map[string]bool
 }
 
 func NewGameStore(file string) *GameStore {
@@ -36,6 +38,7 @@ func NewGameStore(file string) *GameStore {
 	})
 	immunes := make(map[string]*Immune)
 	users := make(map[string]bool)
+	wars := make(map[string]bool)
 	var conquerorBytes []byte
 	db.View(func(tx *bolt.Tx) error {
 		b := tx.Bucket(bucketName)
@@ -49,7 +52,13 @@ func NewGameStore(file string) *GameStore {
 		usersBytes := b.Get(usersKey)
 		err = json.Unmarshal(usersBytes, &users)
 		if err != nil {
-			log.Errorf("can't unmarshal users %s: %q", string(immunesBytes), err)
+			log.Errorf("can't unmarshal users %s: %q", string(usersBytes), err)
+			return err
+		}
+		warsBytes := b.Get(warsKey)
+		err = json.Unmarshal(warsBytes, &wars)
+		if err != nil {
+			log.Errorf("can't unmarshal wars %s: %q", string(warsBytes), err)
 			return err
 		}
 		return nil
@@ -59,6 +68,7 @@ func NewGameStore(file string) *GameStore {
 		immunes:   immunes,
 		conqueror: &Player{Name: string(conquerorBytes)},
 		users:     users,
+		wars:      wars,
 	}
 }
 
@@ -154,6 +164,27 @@ func (gs *GameStore) GetUsers() []string {
 	return users
 }
 
+func (gs *GameStore) AddWar(ally string) {
+	gs.Lock()
+	gs.wars[ally] = true
+	gs.saveWars()
+	gs.Unlock()
+}
+
+func (gs *GameStore) DeleteWar(ally string) {
+	gs.Lock()
+	delete(gs.wars, ally)
+	gs.saveWars()
+	gs.Unlock()
+}
+
+func (gs *GameStore) IsWar(ally string) bool {
+	gs.Lock()
+	_, ok := gs.wars[ally]
+	gs.Unlock()
+	return ok
+}
+
 func (gs *GameStore) saveImmunes() error {
 	gs.expireImmunes()
 	immunesBytes, err := json.Marshal(gs.immunes)
@@ -178,6 +209,19 @@ func (gs *GameStore) saveUsers() error {
 	return gs.db.Update(func(tx *bolt.Tx) error {
 		b := tx.Bucket(bucketName)
 		return b.Put(usersKey, usersBytes)
+	})
+}
+
+func (gs *GameStore) saveWars() error {
+	warsBytes, err := json.Marshal(gs.wars)
+	if err != nil {
+		log.Errorf("failed to marshal wars: %q", err)
+		return err
+	}
+	log.Infof("Marshalled wars: %s", string(warsBytes))
+	return gs.db.Update(func(tx *bolt.Tx) error {
+		b := tx.Bucket(bucketName)
+		return b.Put(warsKey, warsBytes)
 	})
 }
 

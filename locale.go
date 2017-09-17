@@ -21,7 +21,7 @@ func setEngLocale() {
 	YesButton = "✅ Yes"
 	NoButton = "❌ No"
 
-	battleRegExp = regexp.MustCompile(`The battle with ([^[:ascii:]]?\[[^[:ascii:]]*\])?(.*) complete`)
+	battleRegExp = regexp.MustCompile(`The battle with 🗡?[^[:ascii:]]?\[?([^[:ascii:]]*)?\]?(.*) complete`)
 	statRegExp = regexp.MustCompile(`Conqueror:\s+(\[[^[:ascii:]]*\])?(.*)`)
 
 	// Parser message parts

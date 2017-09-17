@@ -6,10 +6,10 @@ import (
 )
 
 var (
-	battleRegExp = regexp.MustCompile(`Битва с 🗡?([^[:ascii:]]?\[[^[:ascii:]]*\])?(.*) окончена`)
+	battleRegExp = regexp.MustCompile(`Битва с 🗡?[^[:ascii:]]?\[?([^[:ascii:]]*)?\]?(.*) окончена`)
 	statRegExp   = regexp.MustCompile(`Завоеватель:\s+(\[[^[:ascii:]]*\])?(.*)`)
 
-	battleRegExpRu = regexp.MustCompile(`Битва с 🗡?([^[:ascii:]]?\[[^[:ascii:]]*\])?(.*) окончена`)
+	battleRegExpRu = regexp.MustCompile(`Битва с 🗡?[^[:ascii:]]?\[?([^[:ascii:]]*)?\]?(.*) окончена`)
 	statRegExpRu   = regexp.MustCompile(`Завоеватель:\s+(\[[^[:ascii:]]*\])?(.*)`)
 )
 

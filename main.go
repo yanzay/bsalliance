@@ -94,6 +94,8 @@ func main() {
 	}
 	bot.AddMiddleware(logger)
 	bot.HandleFunc("/immunes", onlyUsers(immunesHandler))
+	bot.HandleFunc("/setwar {alliance}", onlyAdmin(setWarHandler))
+	bot.HandleFunc("/unsetwar {alliance}", onlyAdmin(unsetWarHandler))
 	bot.HandleFunc("/clear", onlyUsers(clearHandler))
 	bot.HandleFunc("/delete {name}", onlyUsers(deleteHandler))
 	bot.HandleFunc("/adduser {user}", onlyAdmin(addUserHandler))
@@ -135,6 +137,26 @@ func delUserHandler(m *tbot.Message) {
 func usersHandler(m *tbot.Message) {
 	users := gameStore.GetUsers()
 	sendMarkdown(m, strings.Join(users, "\n"))
+}
+
+func setWarHandler(m *tbot.Message) {
+	ally := m.Vars["alliance"]
+	if ally == "" {
+		m.Reply("Alliance emoji required")
+		return
+	}
+	gameStore.AddWar(ally)
+	m.Reply("OK")
+}
+
+func unsetWarHandler(m *tbot.Message) {
+	ally := m.Vars["alliance"]
+	if ally == "" {
+		m.Reply("Alliance emoji required")
+		return
+	}
+	gameStore.DeleteWar(ally)
+	m.Reply("OK")
 }
 
 func immunesHandler(m *tbot.Message) {
@@ -179,20 +201,6 @@ func parseForwardHandler(m *tbot.Message) {
 	var replyTo = m.ChatID
 	forwardTime := time.Unix(int64(m.ForwardDate), 0)
 	switch {
-	case m.Data == YesButton:
-		if responses[m.ChatID] != nil {
-			select {
-			case responses[m.ChatID] <- true:
-			default:
-			}
-		}
-	case m.Data == NoButton:
-		if responses[m.ChatID] != nil {
-			select {
-			case responses[m.ChatID] <- false:
-			default:
-			}
-		}
 	case m.ForwardDate == 0:
 	case isAllianceMembers(m.Data):
 		allianceForwardHandler(m)
@@ -214,9 +222,9 @@ func parseForwardHandler(m *tbot.Message) {
 		if player != nil {
 			if replyTo != 0 {
 				go farmer(forwardTime.Add(10*time.Minute), replyTo)
-				add := askToAdd(m)
+				add := player.Alliance != "" && gameStore.IsWar(player.Alliance)
 				if !add {
-					m.Reply(MessageDontTrack)
+					m.Reply("OK")
 					return
 				}
 			}
@@ -249,20 +257,6 @@ func updateImmune(player *Player, forwardTime time.Time, replyTo int64) {
 	immune, updated := gameStore.AddImmune(player, forwardTime)
 	if updated {
 		go waiter(immune, fmt.Sprintf(MessageEndOfImmune, player.Name), replyTo)
-	}
-}
-
-var responses = make(map[int64]chan bool)
-
-func askToAdd(m *tbot.Message) bool {
-	buttons := []string{YesButton, NoButton}
-	m.ReplyKeyboard(MessageTrackImmune, [][]string{buttons}, tbot.OneTimeKeyboard)
-	responses[m.ChatID] = make(chan bool)
-	select {
-	case answer := <-responses[m.ChatID]:
-		return answer
-	case <-time.After(1 * time.Minute):
-		return false
 	}
 }
 
