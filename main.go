@@ -222,7 +222,7 @@ func parseForwardHandler(m *tbot.Message) {
 		if player != nil {
 			if replyTo != 0 {
 				go farmer(forwardTime.Add(10*time.Minute), replyTo)
-				add := player.Alliance != "" && gameStore.IsWar(player.Alliance)
+				add := player.Alliance != "" && gameStore.IsWar(player.Alliance) || gameStore.GetConqueror().Name == player.Name
 				if !add {
 					m.Reply("OK")
 					return
