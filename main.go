@@ -101,6 +101,7 @@ func main() {
 	bot.HandleFunc("/adduser {user}", onlyAdmin(addUserHandler))
 	bot.HandleFunc("/deluser {user}", onlyAdmin(delUserHandler))
 	bot.HandleFunc("/users", onlyUsers(usersHandler))
+	bot.HandleFunc("/call", onlyUsers(callHandler))
 	bot.HandleDefault(onlyUsers(parseForwardHandler))
 	bot.ListenAndServe()
 }
@@ -137,6 +138,15 @@ func delUserHandler(m *tbot.Message) {
 func usersHandler(m *tbot.Message) {
 	users := gameStore.GetUsers()
 	sendMarkdown(m, strings.Join(users, "\n"))
+}
+
+func callHandler(m *tbot.Message) {
+	users := gameStore.GetUsers()
+	usernames := []string{}
+	for _, user := range users {
+		usernames = append(usernames, "@"+user)
+	}
+	m.Reply(strings.Join(usernames, " "))
 }
 
 func setWarHandler(m *tbot.Message) {
